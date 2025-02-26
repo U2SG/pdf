@@ -5,7 +5,7 @@ import datetime
 import time
 import re
 import io
-from streamlit_float import *
+from streamlit_float import float_init
 from pathlib import Path
 from services.chat_service import ChatService
 from docx import Document
@@ -14,6 +14,7 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.oxml.ns import qn
 from services.time import date_to_chinese
 from config import RESOURCES_DIR
+from services.tools import replace_card_numbers
 
 def use_re(text):
     """从文本中提取 JSON 数据"""
@@ -45,6 +46,9 @@ def process_data_list(data_list, table, columns):
                     row_cells[i].text = str(item.get("Case,No", 'N/A'))
                 else:
                     row_cells[i].text = str(item[column])
+                
+                if column == "Preservation_Measure":
+                    row_cells[i].text = replace_card_numbers(row_cells[i].text)
                 
                 # 设置单元格格式
                 row_cells[i].paragraphs[0].alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
@@ -93,7 +97,7 @@ def initialize_session_state():
     """初始化会话状态"""
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "system", "content": """### 角色设定\n最高法院认证的司法文书结构化处理专家，具备民商事保全裁定自动化解析资质。\n\n### 任务\n 根据用户提供的文书内容，自动解析并生成结构化、标准化JSON数据输出。请直接输出最终答案，无需包含分析步骤或推理过程。输出格式需严格遵循 [指定格式]，仅呈现结论性内容。\n\n### 任务分解\n 1. **字段提取**\n    - 申请人：定位"申请人"字段，若无明确标识则赋值为"未知"\n    - 被申请人：强制要求从文书中直接提取，禁止推断或默认值\n     - 民事裁定书编号：识别"民初"、"民终"等标准编号格式\n     - 保全条目：提取所有独立保全项（包括处理失败的情况），包含：\n         * 序号\n        * 权利人(权利人为被申请人）\n        * 保全措施（"结构化模板": 操作动词[冻结/查封]+[被申请人]+标的物[账户/房产]+实际处理结果[账户XX元]"；"多标的分割符": ["；", "。", "，"]，对多标的分开列目）\n        * 实施时间（格式：YYYY-MM-DD，无法确认时默认1970-01-01，禁止推断）\n        * 保全期限（单位：年，示例格式：一年）\n        * 到期日（计算逻辑：实施时间+期限年份）\n        * 备注（特定格式：支付宝ID/微信订单号，失败原因说明）\n 2. **数据处理规范** \n    - 特殊字段处理：\n        * 实际处理结果:禁止添加应冻结内容和实际冻结字样，只能用冻结作为操作动词\n        * 银行账户：根据银行卡号在保全措施中添加归属银行信息\n        * 房产：查封房产需关联不动产登记编号\n        * 财付通账户：账号名加入到保全措施\n         * 超额冻结处理：计算有效金额作为实际冻结金额\n        * 支付宝账户备注："ID:"+识别值\n        * 微信/财付通账户备注："冻结单号:"+识别值\n        * 余额不足处理：无需添加备注\n        * 查封/冻结失败的情况：备注中说明具体原因\n 3. **校验与修正**\n    - 完整性检查：对提取到的信息进行校验，确保信息完整\n    - 时间校验：自动修正不符合YYYY-MM-DD格式的时间字段\n    - 逻辑验证：确保保全到期日=实施时间+保全期限\n\n ### 输出规范 \n```json\n {\n    "Applicant": "张三", \n    "Respondent": "李四",\n    "Civil_Ruling_Number": "(2024)京0105民初1234号",\n    "Preservation_Results": [\n     {\n        "Case_No": 1,\n        "Right_Holder": "李四",\n        "Preservation_Measure": "冻结被申请人李四名下的中国农业银行6228483399996372153账户内存款1100元",\n        "Implementation_Date": "2024-02-01",\n        "Duration_Years": "一年",\n        "Expiration_Date": "2025-01-31",\n        "Remarks": "ID:123456" \n     }\n    ] \n} """},
+            {"role": "system", "content": """### 角色设定\n最高法院认证的司法文书结构化处理专家，具备民商事保全裁定自动化解析资质。\n\n### 任务\n 根据用户提供的文书内容，自动解析并生成结构化、标准化JSON数据输出。请直接输出最终答案，无需包含分析步骤或推理过程。输出格式需严格遵循 [指定格式]，仅呈现结论性内容。\n\n### 任务分解\n 1. **字段提取**\n    - 申请人：定位"申请人"字段，若无明确标识则赋值为"未知"\n    - 被申请人：强制要求从文书中直接提取，禁止推断或默认值\n     - 民事裁定书编号：识别"民初"、"民终"等标准编号格式\n     - 保全条目：提取所有独立保全项（包括执行失败的情况），包含：\n         * 序号\n        * 权利人(权利人为被申请人）\n        * 保全措施（"结构化模板": 操作动词[冻结/查封]+[被申请人]+标的物[金融账户/房产/动产]+实际处理结果[账户XX元]"；"多标的分割符": ["；", "。", "，"]，对多标的分开列目）\n        * 实施时间（格式：YYYY-MM-DD，无法确认时默认1970-01-01，禁止推断）\n        * 保全期限（单位：年，示例格式：一年）\n        * 到期日（计算逻辑：实施时间+期限年份）\n        * 备注（特定格式：支付宝ID/微信订单号，失败原因说明）\n 2. **数据处理规范** \n    - 金融账户处理：\n        * 实际处理结果:删除应冻结内容和实际冻结字样，只能用冻结作为操作动词\n        * 银行账户：只输出银行卡号\n        * 房产：查封房产需关联不动产登记编号\n        * 支付宝账户：使用机构名全称“支付宝（中国）网络技术有限公司”，再关联支付宝账户\n        * 财付通账户：使用全称”财付通支付科技有限公司“，关联微信账户名\n         * 超额冻结处理：计算有效金额作为实际冻结金额\n        * 支付宝账户备注："ID:"+识别值\n        * 微信/财付通账户备注："冻结单号:"+识别值\n        * 余额不足处理：无需添加备注\n        * 查封/冻结失败的情况：备注中说明具体原因\n 3. **校验与修正**\n    - 完整性检查：对提取到的信息进行校验，确保信息完整\n    - 时间校验：自动修正不符合YYYY-MM-DD格式的时间字段\n    - 逻辑验证：确保保全到期日=实施时间+保全期限\n\n ### 输出规范 \n```json\n {\n    "Applicant": "张三", \n    "Respondent": "李四",\n    "Civil_Ruling_Number": "(2024)京0105民初1234号",\n    "Preservation_Results": [\n     {\n        "Case_No": 1,\n        "Right_Holder": "李四",\n        "Preservation_Measure": "冻结被申请人李四名下的支付宝（中国）网络技术有限公司1228349357支付宝账户内存款1100元",\n        "Implementation_Date": "2024-02-01",\n        "Duration_Years": "一年",\n        "Expiration_Date": "2025-01-31",\n        "Remarks": "ID:123456" \n     }\n    ] \n} """},
         ]
     if "chat_service" not in st.session_state:
         st.session_state.chat_service = ChatService()

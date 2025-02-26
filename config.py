@@ -13,3 +13,4 @@ for dir_path in [DATA_DIR, RESOURCES_DIR, UPLOAD_DIR]:
 BASE_URL = "https://api.deepseek.com/v1"  # URL
 DEEPSEEK_API_KEY = "sk-41ebc756e88549d4892ca52f4418e05a"  # API Key
 DEEPSEEK_MODEL = "deepseek-chat"  # 默认模型名称
+APP_CODE = "d9aaa8eea48742caa9ee2df1b6b55a7b"

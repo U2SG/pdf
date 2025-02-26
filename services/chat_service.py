@@ -1,6 +1,5 @@
 from services.client_init import client
 
-
 class ChatService:
     def __init__(self):
         self.model="qwen-long"
