@@ -38,7 +38,8 @@ def replace_card_numbers(text):
 
     def replacer(match):
         card_num = match.group()
-        return query_bank_card(card_num)+card_num if query_bank_card(card_num) else card_num
+        bank = query_bank_card(card_num)
+        return bank+card_num if bank else card_num
 
     result_str = re.sub(pattern, replacer, text)
     return result_str
