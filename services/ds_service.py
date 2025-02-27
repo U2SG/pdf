@@ -2,7 +2,7 @@ import logging
 from functools import lru_cache
 from typing import List, Dict, Generator
 from openai import OpenAI
-from config import BASE_URL, DEEPSEEK_API_KEY, DEEPSEEK_MODEL
+from config import BASE_URL, DEEPSEEK_API_KEY, DEEPSEEK_MODEL_R1
 
 logger = logging.getLogger(__name__)
 
@@ -18,12 +18,12 @@ def initialize_deepseek_client() -> OpenAI:
 
 client = initialize_deepseek_client()
 
-class ChatService:
+class DSService:
     def __init__(self):
         """
         初始化 ChatService 实例，设置默认的模型名称。
         """
-        self.model = DEEPSEEK_MODEL
+        self.model = DEEPSEEK_MODEL_R1
     
     def get_response(self, messages: List[Dict[str, str]]) -> Generator[str, None, None]:
         """
@@ -36,9 +36,9 @@ class ChatService:
             return client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                temperature=0.1,
+                temperature=1.0,
                 stream=True,
-                response_format={"type": "json_object"},
+                # response_format={"type": "json_object"},
                 # stream_options={"include_usage": True}
             )
         except Exception as e:

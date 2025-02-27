@@ -10,7 +10,8 @@ for dir_path in [DATA_DIR, RESOURCES_DIR, UPLOAD_DIR]:
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
-BASE_URL = "https://api.deepseek.com/v1"  # URL
-DEEPSEEK_API_KEY = "sk-41ebc756e88549d4892ca52f4418e05a"  # API Key
-DEEPSEEK_MODEL = "deepseek-chat"  # 默认模型名称
+BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"  # URL
+DEEPSEEK_API_KEY = "cab7b475-daca-4faa-a6ac-2725d5f50dcf"  # API Key
+DEEPSEEK_MODEL_V3 = "ep-20250227113253-f6rx2"  # 默认模型名称
+DEEPSEEK_MODEL_R1 = "ep-20250227115539-c6kt7"
 APP_CODE = "d9aaa8eea48742caa9ee2df1b6b55a7b"

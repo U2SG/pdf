@@ -7,3 +7,5 @@ build/
 dist/
 __pycache__/
 *.pyc
+pdfd.spec
+app.spec

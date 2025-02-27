@@ -128,9 +128,9 @@ def render_file_uploader():
                 file_id = upload_file(client, file_path)
                 if file_id:
                     st.session_state.file_id = file_id
-                    data_now = {"filename": file_name, "file_id": file_id}
-                    json_path = Path(RESOURCES_DIR) / "data.json"
-                    join_json(json_path, data_now)
+                    # data_now = {"filename": file_name, "file_id": file_id}
+                    # json_path = Path(RESOURCES_DIR) / "data.json"
+                    # join_json(json_path, data_now)
                     st.success(f"文件上传成功: {file_name}")
                 return file_path
         except Exception as e:

@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 from app.upload import render_file_uploader
 from app.pdf import render_pdf_viewer
-from app.chat import render_chat_interface
+from app.chat import render_chat_interface, render_chat2_interface
 from app.download import render_download_interface
 
 
@@ -37,12 +37,13 @@ def main():
                 st.error(f"文件打开失败: {str(e)}")
     
     with chat_col:
-        render_chat_interface()
-        # if file_path:
-        #     render_chat_interface()
-        # else:
-        #     st.info("请先上传PDF文件")
-        #     render_chat2_interface():
+        st.title("对话")
+        # render_chat_interface()
+        if file_path:
+            render_chat_interface()
+        else:
+            st.info("请先上传PDF文件")
+            render_chat2_interface()
     
     with down_col:
         render_download_interface()

@@ -7,14 +7,15 @@ import re
 import io
 from streamlit_float import float_init
 from pathlib import Path
-from services.chat_service import ChatService
 from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.oxml.ns import qn
 from services.time import date_to_chinese
-from config import RESOURCES_DIR
 from services.tools import replace_card_numbers
+from services.ds_service import DSService
+from services.chat_service import ChatService
+from config import RESOURCES_DIR
 
 def use_re(text):
     """从文本中提取 JSON 数据"""
@@ -106,18 +107,26 @@ def initialize_session_state():
     if "last_json_list" not in st.session_state:
         st.session_state.last_json_list = None
 
+def initialize_dssession_state():
+    if "dsmessages" not in st.session_state:
+        st.session_state.dsmessages = [
+            {"role": "system", "content": "你是一个AI助手，你的任务是回答用户的问题。"}
+        ]
+    if "ds_serivice" not in st.session_state:
+        st.session_state.ds_service = DSService()
+
 def render_chat2_interface():
     """渲染聊天界面"""
     float_init()
     st.subheader("消息区")
-    initialize_session_state()
+    initialize_dssession_state()
 
     # 消息显示区域
     messages_container = st.container()
     with messages_container:
         expander = st.expander("消息记录", expanded=False)
         with expander:
-            for message in st.session_state.messages:
+            for message in st.session_state.dsmessages:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
 
@@ -126,45 +135,35 @@ def render_chat2_interface():
     with input_container:
         if prompt := st.chat_input("输入问题"):
             with messages_container:
-                # 处理文件 ID
-                if "file_id" in st.session_state and st.session_state.file_id != 0 and st.session_state.executed:
-                    st.session_state.messages.extend([
-                        {"role": "system", "content": f'fileid://{st.session_state.file_id}'},
-                        {"role": "user", "content": "从新上传的文件提取信息，输出结果"},
-                    ])
-                    st.session_state.executed = False
-                else:
-                    # 添加用户消息
-                    with st.chat_message("user"):
-                        st.markdown(prompt)
-                    st.session_state.messages.append({"role": "user", "content": prompt})
+                # 添加用户消息
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                st.session_state.dsmessages.append({"role": "user", "content": prompt})
 
                 # 获取助手回复
                 try:
                     start_time = time.time()
-                    response_placeholder = st.empty()
-                    response = ""
-
-                    # for s in st.session_state.messages:
-                    #     print(s)
-                    for chunk in fetch_streaming_response(st.session_state.chat_service.get_response(st.session_state.messages)):
-                        response += chunk
-                        response_placeholder.markdown(response)
+                    
+                    reasoning_content = ""
+                    content = ""
+                    with messages_container:
+                        expander_thinking = st.expander("深度思考", expanded=False)
+                        with expander_thinking:
+                            reasoning_placeholder = st.empty()
+                        with st.chat_message("assistant"):
+                            response_placeholder = st.empty()
+                            for chunk in st.session_state.ds_service.get_response(st.session_state.dsmessages):
+                                if hasattr(chunk.choices[0].delta, 'reasoning_content') and chunk.choices[0].delta.reasoning_content:
+                                    reasoning_content += chunk.choices[0].delta.reasoning_content
+                                    reasoning_placeholder.markdown(reasoning_content)
+                                else:          
+                                    content += chunk.choices[0].delta.content
+                                    response_placeholder.markdown(content)
 
                     end_time = time.time()
                     elapsed_time = end_time - start_time
                     print(f"获取回答耗时: {elapsed_time:.2f} 秒")
-                    st.session_state.messages.append({"role": "system", "content": response})
-
-                    # 解析 JSON 并生成文件
-                    json_list = use_re(response)
-                    if json_list:
-                        st.session_state.file_stream = write_file(json_list)
-                        if json_list != st.session_state.last_json_list and st.session_state.last_json_list is not None:
-                            st.session_state.last_json_list = json_list
-                            st.success("检测到 JSON 数据更新，已重新生成文件！")
-                        else:
-                            st.success("已生成文件！")
+                    st.session_state.dsmessages.append({"role": "assistant", "content": content})
 
                 except Exception as e:
                     st.error(f"获取回答失败: {str(e)}")
@@ -208,14 +207,14 @@ def render_chat_interface():
                 # 获取助手回复
                 try:
                     start_time = time.time()
-                    response_placeholder = st.empty()
-                    response = ""
+                    with messages_container:
+                        with st.chat_message("system"):
+                            response_placeholder = st.empty()
+                            response = ""
 
-                    # for s in st.session_state.messages:
-                    #     print(s)
-                    for chunk in fetch_streaming_response(st.session_state.chat_service.get_response(st.session_state.messages)):
-                        response += chunk
-                        response_placeholder.markdown(response)
+                            for chunk in st.session_state.chat_service.get_response(st.session_state.messages):
+                                response += chunk.choices[0].delta.content
+                                response_placeholder.markdown(response)
 
                     end_time = time.time()
                     elapsed_time = end_time - start_time
