@@ -40,22 +40,25 @@ def render_download_interface():
     
     # # 初始化文件名
     # file_name = "example.csv"
+    download_col, del_col = st.columns([1,1])
 
-    if "file_stream" in st.session_state:
-        try:       
-            st.download_button(
-                label="下载文件",
-                data=st.session_state.file_stream,
-                file_name="结果.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
-        except Exception as e:
-            st.error(f"下载文件失败: {str(e)}")
-    else:
-        st.info("等待生成结果")
+    with download_col:
+        if "file_stream" in st.session_state:
+            try:       
+                st.download_button(
+                    label="下载文件",
+                    data=st.session_state.file_stream,
+                    file_name="结果.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+            except Exception as e:
+                st.error(f"下载文件失败: {str(e)}")
+        else:
+            st.info("等待生成结果")
 
-    if st.button("清除文件"):
-        delete_files_in_folder(UPLOAD_DIR)
-        for file in get_all_file_id():
-            if file.id not in ['file-fe-kWLhL9uiGSetIMxHC1mMoUVA','file-fe-P5nO8RM76ht2qqjIwUiVANIJ']:
-                delete_file(file.id)
+    with del_col:
+        if st.button("清除文件"):
+            delete_files_in_folder(UPLOAD_DIR)
+            for file in get_all_file_id():
+                if file.id not in ['file-fe-kWLhL9uiGSetIMxHC1mMoUVA','file-fe-P5nO8RM76ht2qqjIwUiVANIJ']:
+                    delete_file(file.id)
