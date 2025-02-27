@@ -20,7 +20,7 @@ def main():
     st.title("PDF")
     
     # 只使用两列，并调整比例，PDF区域窄一点，对话区域宽一点
-    pdf_col, chat_col, down_col = st.columns([2, 1.5, 0.38])
+    pdf_col, chat_col = st.columns([2, 1.5])
     
     # 使用 sidebar 来放置文件上传组件
     with st.sidebar:
@@ -37,7 +37,6 @@ def main():
                 st.error(f"文件打开失败: {str(e)}")
     
     with chat_col:
-        st.title("对话")
         # render_chat_interface()
         if file_path:
             render_chat_interface()
@@ -45,7 +44,7 @@ def main():
             st.info("请先上传PDF文件")
             render_chat2_interface()
     
-    with down_col:
+    with st.sidebar:
         render_download_interface()
         
 
